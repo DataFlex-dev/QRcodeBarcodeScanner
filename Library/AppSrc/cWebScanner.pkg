@@ -1,0 +1,187 @@
+Use cWebBaseControl.pkg
+
+Enum_List
+    Define CODE_FORMAT_128     for 1
+    Define CODE_FORMAT_EAN     for 2
+    Define CODE_FORMAT_EAN_8   for 3
+    Define CODE_FORMAT_39      for 4
+    Define CODE_FORMAT_39_VIN  for 5
+    Define CODE_FORMAT_CODABAR for 6
+    Define CODE_FORMAT_UPC     for 7
+    Define CODE_FORMAT_UPC_E   for 8
+    Define CODE_FORMAT_I2OF5   for 9
+    Define CODE_FORMAT_2OF5    for 10
+    Define CODE_FORMAT_93      for 11    
+    Define CODE_FORMAT_QR      for 12
+End_Enum_List
+
+Enum_List
+    Define PATCH_SIZE_XS for 1
+    Define PATCH_SIZE_S  for 2
+    Define PATCH_SIZE_M  for 3
+    Define PATCH_SIZE_L  for 4
+    Define PATCH_SIZE_XL for 5
+End_Enum_List
+
+Struct tCodeResultInfo
+    Integer iError
+    Integer iCode
+    Integer iStart
+    Integer iEnd    
+End_Struct
+
+Struct tCodeResult
+    String sCode                // The decoded information
+    String sCodeFormat          // Format of the code
+    Integer iStart              // For 1D barcodes: Starting position of the read
+    Integer iEnd                // For 1D barcodes: End position of the read
+    Integer iCodeSet            // Code set
+    tCodeResultInfo StartInfo   // For 1D barcodes: Starting position additional info
+    tCodeResultInfo EndInfo     // For 1D barcodes: End position of the read
+    Integer iDirection          // For 1D barcodes: Direction of the read (1 = left to right, -1 = right to left, 0 = no result)
+End_Struct
+
+// The cWebScanner allows for scanning barcodes (currently only 1d) using the mobile camera (or webcam when using on a pc / laptop)
+// It creates a video element to show the live decoding feed.
+//
+// After the view is rendered, use StartScanner to start the scanner.
+//
+// Set the peCodeFormat to the format of the barcode you will be scanning (can be changed at runtime via WebSet)
+// Scanning for multiple barcode formats simultaneously is supported by setting the psCodeFormatMulti with the desired supported readers as a comma separated String. 
+// Be careful when using this, as this increases the chance for false-positives
+//
+// When a valid barcode is Found, a tCodeResult will be sent to the server.
+// Use OnProcessCodeResult to access the returned result
+//
+// Note that the cWebScanner does not work in all browsers as it uses several modern browser API's though Mobile browsers should generally be fine.
+//
+// Supported code readers:
+// 1-Dimensional
+// - code_128_reader (default)
+// - ean_reader
+// - ean_8_reader
+// - code_39_reader
+// - code_39_vin_reader
+// - codabar_reader
+// - upc_reader
+// - upc_e_reader
+// - i2of5_reader
+// - 2of5_reader
+// - code_93_reader
+//
+// 2-Dimensional
+// - QR
+//
+// The above list is the syntax to follow when using psCodeFormatMulti (Multi format is only supported for 1-dimensional barcodes)
+
+Class cWebScanner is a cWebBaseControl
+    
+    Procedure Construct_Object
+        Forward Send Construct_Object
+        
+        // Tells the scanner which Code Format to look for (effictively priming the scanner to only look for a single format). Enum is converted at the client to the appropriate reader.
+        // This can be changed at runtime.
+        // If scanning for multiple Code Formats is a single run is desired, use psCodeFormatMulti instead.
+        { EnumList="CODE_FORMAT_128, CODE_FORMAT_EAN, CODE_FORMAT_EAN_8, CODE_FORMAT_39, CODE_FORMAT_39_VIN, CODE_FORMAT_CODABAR, CODE_FORMAT_UPC, CODE_FORMAT_UPC_E, CODE_FORMAT_I2OF5, CODE_FORMAT_2OF5, CODE_FORMAT_93" }
+        {WebProperty = Client}
+        Property Integer peCodeFormat CODE_FORMAT_128
+        
+        // Setting this allows for recognition of multiple code formats in a single scan
+        // This will override the peCodeFormat if set.
+        // Be careful when using this, as scanning for multiple formats in a single run increases the chance of False-Positives
+        // One should take care of the order the readers are given, since some might return a value even though it is not the correct type (EAN-13 vs. UPC-A).
+        // Make sure the syntax is 100% correct and only use the available code formats! (see list in the doc comment above)
+        // Example notation: "code_128_reader, ean_reader, upc_reader"
+        // Multi format is only supported for 1-dimensional barcodes
+        {WebProperty = Client}
+        Property String psCodeFormatMulti
+        
+        // When scanning for EAN codes, setting this to true will allow the scanner to also recognize extended EAN.
+        // Adds EAN-2 and EAN-5 to the regular EAN
+        // Sidenote: In testing - extended EAN has shown to return false results a fair number of times so use with caution.
+        {WebProperty = Client}
+        Property Boolean pbEnableExtendedEAN False
+        
+        // Defines the density of the search-grid. The patchSize is proportional to the size of the scanned barcodes. 
+        // If you have really large barcodes which can be read close-up, then the Use of large or x-large is recommended. 
+        // In cases where the barcode is further away from the camera lens (lack of auto-focus, or small barcodes) then it's advised to set the size to small or even x-small. 
+        // For the latter it's also recommended to crank up the resolution in order to find a barcode.
+        { EnumList="PATCH_SIZE_XS, PATCH_SIZE_S, PATCH_SIZE_M, PATCH_SIZE_L, PATCH_SIZE_XL" }
+        {WebProperty = Client}
+        Property Integer pePatchSize PATCH_SIZE_M
+        
+        // Defines the maximum number of scans per second. Higher numbers can yield better, smoother results but are more resource intensive.
+        // Accepts values from 1 to 20
+        {WebProperty = Client}
+        Property Integer piFrequency 10
+        
+        // Tells the locator-process whether it should operate on an image scaled down (half width/height, quarter pixel-count ) or not. 
+        // Turning halfSample on reduces the processing-time significantly and also helps finding a barcode pattern due to implicit smoothing. 
+        // It should be turned off in cases where the barcode is really small and the full resolution is needed to find the position.
+        // It's recommended to keep it turned on and use a higher resolution video-image if needed.
+        {WebProperty = Client}
+        Property Boolean pbHalfSample True
+        
+        // Controls the whether the Scanner actively tries to locate Barcodes in the video feed.
+        // When set to true, this allows the scanner to find barcodes that are offcenter, rotated, etc.
+        // Setting this to false can improve result accuracy and reduce false-positives but will potentially make the scanning process more tedious.
+        {WebProperty = Client}
+        Property Boolean pbAutoLocate True
+        
+        // Controls whether detection boxes are drawn live on the video feed to illustrate where the scanner is searching.
+        // Boxes will only be drawn if pbAutoLocate is set to True
+        {WebProperty = Client}
+        Property Boolean pbDrawDetectionBoxes True
+        
+        // Controls whether the scanner is turned off after it has found and decoded a barcode
+        // Generally it is advised to set this to true, as disabling it may result in several consecutive decoding actions in a single scan causing the OnProcessCodeResult to fire multiple times.
+        {WebProperty = Client}
+        Property Boolean pbStopAfterDetection True
+        
+        // Sets the width of the scanner's video feedback
+        // Width will not exceed the control's container width
+        {WebProperty = Client}
+        Property Integer piScannerWidth 640
+        
+        // Sets the height of the scanner's video feedback
+        // If the scanner's width exceeds the control container's width, the aspect ratio will be NOT maintained
+        // Make sure to WebSetResponsive this accordingly if needed
+        {WebProperty = Client}
+        Property Integer piScannerHeight 480
+        
+        Set psJSClass to "df.WebScanner"
+        Set piMinHeight to 200
+        Set pbShowLabel to False
+    End_Procedure
+    
+    Procedure StartScanner
+        Send ClientAction "startScanner"
+    End_Procedure
+    
+    Procedure StopScanner
+        Send ClientAction "stopScanner"
+    End_Procedure
+
+    Procedure ProcessCodeResult
+        tCodeResult CodeResult
+        tWebValueTree tVT
+        
+        Get ptActionData to tVT
+        
+        ValueTreeDeserializeParameter tVT to CodeResult        
+        
+        Send OnProcessCodeResult CodeResult
+    End_Procedure
+    
+    {MethodType = Event}
+    Procedure OnProcessCodeResult tCodeResult CodeResult
+        // User augmented procedure to handle the scanned code result
+    End_Procedure
+
+    Procedure End_Construct_Object
+        Forward Send End_Construct_Object
+        
+        WebPublishProcedure ProcessCodeResult
+    End_Procedure
+
+End_Class

@@ -1,0 +1,106 @@
+﻿Use cWebView.pkg
+Use cWebPanel.pkg
+Use cWebForm.pkg
+Use cWebButton.pkg
+Use cWebGroup.pkg
+Use cWebSpacer.pkg
+Use cWebHtmlBox.pkg
+Use cWebMenuGroup.pkg
+Use cWebMenuItem.pkg
+Use cWebLabel.pkg
+Use cWebList.pkg
+Use cWebColumn.pkg
+Use cWebScanner.pkg
+
+Object oDashboard is a cWebView
+
+    // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -  
+    // Add a DDO Structure 
+    //
+    // There is no need to synchronize a DD structure on the client so we do
+    // not set the Server property or send ADDOStructure. We will simply use
+    // DDO's to mine data and generate HTML for our cWebHTMLBox objects.
+    // It is the HTML in these objects that is sent to the client each time 
+    // this page is shown.
+    //
+    // Also, it is important for the drill-down Navigation interface that we
+    // do not set the Server property to some DDO because this will affect 
+    // constraints in the next view that we navigate to.
+    // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+
+    
+    Set psCaption to "Dashboard"
+    Set peViewType to vtUndefined
+    Set pbShowCaption to False
+    Set psCSSClass to "Dashboard"
+    Set pbServerOnShow to True
+
+    Object oWebMainPanel is a cWebPanel
+        Set piColumnCount to 24
+        
+        WebSetResponsive piColumnCount rmMobile to 1
+
+        Object oWgLeft is a cWebGroup
+            Set psCaption to "Scanner"
+            Set piColumnCount to 12
+            Set piColumnIndex to 1
+            Set piColumnSpan to 15
+            
+            Object oScanner is a cWebScanner
+                Set piColumnSpan to 0
+                Set peCodeFormat to CODE_FORMAT_QR
+//                Set psCodeFormatMulti to "ean_reader, ean_8_reader"
+//                Set psCodeFormatMulti to "codabar_reader, code_128_reader, code_39_reader"
+                
+                Procedure OnProcessCodeResult tCodeResult CodeResult
+                    Forward Send OnProcessCodeResult CodeResult
+                    WebSet psValue of oWfResult to CodeResult.sCode
+                End_Procedure
+                
+            End_Object  
+        End_Object
+        
+        Object oWgRight is a cWebGroup
+            Set psCaption to ""
+            Set piColumnCount to 12  
+            Set piColumnIndex to 16
+            Set piColumnSpan to 7
+            
+            Object oBtnStart is a cWebButton
+                Set piColumnSpan to 0
+                Set psCaption to "Start scanner"
+            
+                Procedure OnClick
+                    Send StartScanner of oScanner
+                End_Procedure
+            End_Object
+            
+            Object oBtnStop is a cWebButton
+                Set piColumnSpan to 0
+                Set psCaption to "Stop scanner"
+            
+                Procedure OnClick
+                    Send StopScanner of oScanner
+                End_Procedure
+            End_Object
+        
+            Object oWfResult is a cWebForm
+                Set piColumnSpan to 0
+                Set psLabel to "Result code"
+                Set peLabelPosition to lptop
+            End_Object
+        End_Object
+            
+        
+    
+    End_Object
+    
+    Procedure OnBeforeShow
+        // Each time this view is shown we will update the appropriate information.
+    End_Procedure
+
+    Procedure OnShow
+        Forward Send OnShow
+    End_Procedure
+
+End_Object

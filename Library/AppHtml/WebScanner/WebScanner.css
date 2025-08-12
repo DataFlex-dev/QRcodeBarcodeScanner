@@ -1,0 +1,35 @@
+.WebScanner_ViewPort {
+	position: relative;
+}
+
+.WebScanner_ViewPort canvas.drawing, .WebScanner_ViewPort canvas.drawingBuffer {
+	position: absolute;
+	left: 0;
+	top: 0;
+}
+
+.WebScanner_ViewPort > video {
+	max-width: 100%;
+	max-height: 100%;
+}
+
+#WebScanner_QR_Scanner_canvas {
+	position: absolute;
+	opacity: 0.7;
+	z-index: 1000;
+}
+
+#WebScanner_QR_Scanner_bitmap {
+	position: absolute;
+    z-index: 500;
+    opacity: 1;
+}
+
+#WebScanner_QR_Scanner_canvas,
+#WebScanner_QR_Scanner_bitmap,
+#WebScanner_QR_Scanner {
+	top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+}
